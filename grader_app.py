@@ -199,18 +199,10 @@ needs_review는 total이 max_total보다 낮으면 true로 설정하세요.
 모든 텍스트 값에 마크다운 기호를 절대 사용하지 마세요.
 """
 
-# ── 채점 함수 ──────────────────────────────────────────────────────────────
-def grade_answers(answers: dict) -> dict:
+# ── 채점 함수 (문제별 분리) ────────────────────────────────────────────────
+def _call_api(answer_text: str) -> dict:
     api_key = st.secrets.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_API_KEY")
-    client = anthropic.Anthropic(api_key=api_key)
-    answer_text = ""
-    names = ["거제", "고현", "장평", "중곡"]
-    for i, key in enumerate(["q1_1","q1_2","q1_3","q1_4"], 1):
-        val = answers.get(key, "").strip()
-        answer_text += f"\n[문제 1-{i}] {names[i-1]}의 발언:\n{val if val else '(미응답)'}\n"
-    answer_text += f"\n[문제 2-1] 세모의 의도 분석:\n{answers.get('q2_1','').strip() or '(미응답)'}\n"
-    answer_text += f"\n[문제 2-2] 메시지 불일치 비교:\n{answers.get('q2_2','').strip() or '(미응답)'}\n"
-    answer_text += f"\n[문제 3] 나-전달법 고쳐 말하기:\n{answers.get('q3','').strip() or '(미응답)'}\n"
+    client  = anthropic.Anthropic(api_key=api_key)
     response = client.messages.create(
         model="claude-sonnet-4-5-20250929",
         max_tokens=4000,
@@ -222,6 +214,23 @@ def grade_answers(answers: dict) -> dict:
     if json_match:
         return json.loads(json_match.group())
     return {"results": []}
+
+def grade_q1(answers: dict) -> dict:
+    names = ["거제", "고현", "장평", "중곡"]
+    text  = ""
+    for i, key in enumerate(["q1_1","q1_2","q1_3","q1_4"], 1):
+        val  = answers.get(key, "").strip()
+        text += f"\n[문제 1-{i}] {names[i-1]}의 발언:\n{val if val else '(미응답)'}\n"
+    return _call_api(text)
+
+def grade_q2(answers: dict) -> dict:
+    text  = f"\n[문제 2-1] 세모의 의도 분석:\n{answers.get('q2_1','').strip() or '(미응답)'}\n"
+    text += f"\n[문제 2-2] 메시지 불일치 비교:\n{answers.get('q2_2','').strip() or '(미응답)'}\n"
+    return _call_api(text)
+
+def grade_q3(answers: dict) -> dict:
+    text = f"\n[문제 3] 나-전달법 고쳐 말하기:\n{answers.get('q3','').strip() or '(미응답)'}\n"
+    return _call_api(text)
 
 # ── UI 헬퍼 ───────────────────────────────────────────────────────────────
 def score_class(score, max_score):
@@ -349,7 +358,7 @@ with tab1:
     st.markdown("""
     <div class="cond-box">
       ⚠️ <b>조건</b><br>
-      ✅ 언어폭력 유형은 다음 중에서 골라 쓰시오: 욕설 / 비난 / 비하 / 조롱 / 저주 / 협박<br>
+      ✅ 언어폭력 유형은 다음 중에서 <b>가장 적절한</b> 것을 골라 쓰시오: 욕설 / 비난 / 비하 / 조롱 / 저주 / 협박<br>
       ✅ 밑줄 친 부분만을 근거로 판단하시오.<br>
       ✅ 문장 형식: OO의 발언은 ~에 해당한다. 왜냐하면 ~이기 때문이다.
     </div>
@@ -379,14 +388,12 @@ with tab1:
     st.markdown("")
     if st.button("문제 1 채점하기", key="grade_q1", type="primary", use_container_width=True):
         answers = {k: st.session_state.get(k,"") for k in ALL_KEYS}
-        with st.spinner("채점 중입니다..."):
+        with st.spinner("문제 1 채점 중입니다..."):
             try:
-                data = grade_answers(answers)
+                data = grade_q1(answers)
                 for r in data.get("results", []):
                     st.session_state.results_map[r["id"]] = r
-                st.session_state.graded      = True
-                st.session_state.grand_total = sum(r.get("total",0) for r in data.get("results",[]))
-                st.session_state.grand_max   = sum(r.get("max_total",0) for r in data.get("results",[]))
+                st.session_state.graded = True
                 st.rerun()
             except Exception as e:
                 st.error(f"채점 중 오류가 발생했습니다: {e}")
@@ -434,14 +441,12 @@ with tab2:
     st.markdown("")
     if st.button("문제 2 채점하기", key="grade_q2", type="primary", use_container_width=True):
         answers = {k: st.session_state.get(k,"") for k in ALL_KEYS}
-        with st.spinner("채점 중입니다..."):
+        with st.spinner("문제 2 채점 중입니다..."):
             try:
-                data = grade_answers(answers)
+                data = grade_q2(answers)
                 for r in data.get("results", []):
                     st.session_state.results_map[r["id"]] = r
-                st.session_state.graded      = True
-                st.session_state.grand_total = sum(r.get("total",0) for r in data.get("results",[]))
-                st.session_state.grand_max   = sum(r.get("max_total",0) for r in data.get("results",[]))
+                st.session_state.graded = True
                 st.rerun()
             except Exception as e:
                 st.error(f"채점 중 오류가 발생했습니다: {e}")
@@ -476,21 +481,23 @@ with tab3:
     st.markdown("")
     if st.button("문제 3 채점하기", key="grade_q3", type="primary", use_container_width=True):
         answers = {k: st.session_state.get(k,"") for k in ALL_KEYS}
-        with st.spinner("채점 중입니다..."):
+        with st.spinner("문제 3 채점 중입니다..."):
             try:
-                data = grade_answers(answers)
+                data = grade_q3(answers)
                 for r in data.get("results", []):
                     st.session_state.results_map[r["id"]] = r
-                st.session_state.graded      = True
-                st.session_state.grand_total = sum(r.get("total",0) for r in data.get("results",[]))
-                st.session_state.grand_max   = sum(r.get("max_total",0) for r in data.get("results",[]))
+                st.session_state.graded = True
                 st.rerun()
             except Exception as e:
                 st.error(f"채점 중 오류가 발생했습니다: {e}")
 
-    if st.session_state.graded and st.session_state.grand_max > 0:
-        gt  = st.session_state.grand_total
-        gm  = st.session_state.grand_max
+    # 총점을 results_map 전체 기준으로 계산
+    if st.session_state.graded and st.session_state.results_map:
+        gt = sum(r.get("total",0) for r in st.session_state.results_map.values())
+        gm = sum(r.get("max_total",0) for r in st.session_state.results_map.values())
+    if st.session_state.graded and st.session_state.results_map:
+        gt  = sum(r.get("total",0) for r in st.session_state.results_map.values())
+        gm  = sum(r.get("max_total",0) for r in st.session_state.results_map.values())
         pct = int(gt / gm * 100)
         grade_label = "🏆 우수" if pct >= 80 else "👍 보통" if pct >= 50 else "💪 노력 필요"
         st.markdown(f"""

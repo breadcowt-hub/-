@@ -198,7 +198,7 @@ def grade_answers(answers: dict) -> dict:
     answer_text += f"\n[문제 3] 나-전달법 고쳐 말하기:\n{answers.get('q3','').strip() or '(미응답)'}\n"
 
     response = client.messages.create(
-        model="claude-sonnet-4-20250514",
+        model="claude-sonnet-4-5-20250929",
         max_tokens=4000,
         system=GRADING_CRITERIA,
         messages=[{

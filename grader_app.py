@@ -2,6 +2,7 @@ import streamlit as st
 import anthropic
 import json
 import re
+import os
 
 # ── 페이지 설정 ────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -177,8 +178,8 @@ GRADING_CRITERIA = """
 
 # ── 채점 함수 ──────────────────────────────────────────────────────────────
 def grade_answers(answers: dict) -> dict:
-    """Claude API로 채점 수행"""
-    client = anthropic.Anthropic()
+    api_key = st.secrets.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_API_KEY")
+    client = anthropic.Anthropic(api_key=api_key)
 
     # 답안 텍스트 구성
     answer_text = ""
@@ -452,3 +453,4 @@ with tab_q:
                     st.error("채점 결과를 파싱하는 데 실패했습니다. 다시 시도해 주세요.")
                 except Exception as e:
                     st.error(f"채점 중 오류가 발생했습니다: {e}")
+

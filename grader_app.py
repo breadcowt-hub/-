@@ -303,22 +303,39 @@ st.markdown('<div class="brand-text">♥ 빵쌤과 함께하는 국어수업 ♥
 st.markdown('<div class="title-text">📝 서논술형 자동 채점</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-text">3. 마음이 자라는 시간 ② 존중하며 말하기 | 총 30점</div>', unsafe_allow_html=True)
 
-# 3문제 모두 채점됐을 때 총점 표시
-_graded_ids = set(st.session_state.get("results_map", {}).keys())
-_all_graded = {"1-1","1-2","1-3","1-4","2-1","2-2","3"}.issubset(_graded_ids)
-if _all_graded:
-    _gt  = sum(r.get("total",0) for r in st.session_state.results_map.values())
-    _gm  = sum(r.get("max_total",0) for r in st.session_state.results_map.values())
-    _pct = int(_gt / _gm * 100) if _gm else 0
-    _lbl = "🏆 우수" if _pct >= 80 else "👍 보통" if _pct >= 50 else "💪 노력 필요"
-    st.markdown(f"""
-    <div style="background:#1A3A5C;color:white;border-radius:12px;padding:14px 24px;
-                text-align:center;margin:8px 0 4px 0;">
-      <span style="font-size:14px;opacity:0.8;">전체 총점</span>&nbsp;&nbsp;
-      <span style="font-size:32px;font-weight:bold;">{_gt} / {_gm}점</span>&nbsp;&nbsp;
-      <span style="font-size:16px;">{_lbl} ({_pct}%)</span>
-    </div>
-    """, unsafe_allow_html=True)
+# 총점 항상 표시 (채점 전에는 0점, 채점할수록 누적)
+_rm   = st.session_state.get("results_map", {})
+_gt   = sum(r.get("total",0) for r in _rm.values())
+_gm   = 30  # 고정 만점
+_pct  = int(_gt / _gm * 100) if _gt > 0 else 0
+_lbl  = ("🏆 우수" if _pct >= 80 else "👍 보통" if _pct >= 50 else "💪 노력 필요") if _gt > 0 else "아직 채점 전이에요"
+
+# 문제별 채점 현황
+_q1_done  = any(k in _rm for k in ["1-1","1-2","1-3","1-4"])
+_q2_done  = any(k in _rm for k in ["2-1","2-2"])
+_q3_done  = "3" in _rm
+_q1_score = sum(_rm[k].get("total",0) for k in ["1-1","1-2","1-3","1-4"] if k in _rm)
+_q2_score = sum(_rm[k].get("total",0) for k in ["2-1","2-2"] if k in _rm)
+_q3_score = _rm["3"].get("total",0) if "3" in _rm else 0
+_q1_str   = f"{_q1_score}/8점" if _q1_done else "미채점"
+_q2_str   = f"{_q2_score}/12점" if _q2_done else "미채점"
+_q3_str   = f"{_q3_score}/10점" if _q3_done else "미채점"
+
+st.markdown(f"""
+<div style="background:#1A3A5C;color:white;border-radius:12px;padding:14px 24px;
+            margin:8px 0 4px 0;">
+  <div style="text-align:center;margin-bottom:10px;">
+    <span style="font-size:14px;opacity:0.8;">전체 총점</span>&nbsp;&nbsp;
+    <span style="font-size:32px;font-weight:bold;">{_gt} / {_gm}점</span>&nbsp;&nbsp;
+    <span style="font-size:15px;opacity:0.9;">{_lbl}{f" ({_pct}%)" if _gt > 0 else ""}</span>
+  </div>
+  <div style="display:flex;justify-content:center;gap:24px;font-size:13px;opacity:0.85;">
+    <span>📘 문제 1: {_q1_str}</span>
+    <span>📗 문제 2: {_q2_str}</span>
+    <span>📙 문제 3: {_q3_str}</span>
+  </div>
+</div>
+""", unsafe_allow_html=True)
 
 # 완료 카운트 + 초기화 버튼
 col_count, col_reset = st.columns([6, 1])

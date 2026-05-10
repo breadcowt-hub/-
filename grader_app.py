@@ -137,19 +137,20 @@ GRADING_CRITERIA = """
 형식 미준수 시 감점 없음. 내용과 감정이 구분되는지로만 채점.
 오개념: 내용과 감정을 한 문장에 합치면 내용 감정 각 1점씩만 인정
 
-2-2) 메시지 불일치 비교 (8점: 의도 3점 + 실제 메시지 3점 + 차이결과 2점)
-의도(3점):
-  3점: 바람(지켜봐 달라)과 서운함이 모두 명확
-  2점: 둘 중 하나만 명확
-  1점: 의도 언급은 있으나 매우 모호
-실제 메시지(3점):
-  3점: 맨날 딴짓 또는 안 도와줄 거야 중 하나 이상 인용 + 비난 협박 성격 서술
-  2점: 지문 인용은 있으나 비난 협박 성격 미언급, 또는 성격은 있으나 인용 없음
-  1점: 추상적 서술 수준
-차이결과(2점):
-  2점: 전달되지 않다, 알아채지 못하다, 공격받다, 상처 등이 드러남
-  1점: 차이 언급은 있으나 결과 영향 없음
-  0점: 두 메시지 나열만 하고 차이 결과 없음
+2-2) 메시지 불일치 비교 (8점: 의도 4점 + 실제 메시지 4점)
+핵심 원칙: 의도한 메시지와 실제 전달된 메시지를 모두 명확히 서술하면 만점.
+차이나 결과를 별도 문장으로 쓰지 않아도 두 메시지가 대조되어 드러나면 인정.
+
+의도(4점):
+  4점: 지켜봐 달라는 바람과 서운함이 모두 명확히 드러남
+  3점: 둘 중 하나만 명확히 드러남
+  2점: 의도 언급은 있으나 모호함
+  1점: 의도가 매우 불분명함
+실제 메시지(4점):
+  4점: 지문 표현(맨날 딴짓, 안 도와줄 거야 중 하나 이상) 직접 인용 + 비난·협박 성격 서술
+  3점: 지문 인용은 있으나 비난·협박 성격 미언급, 또는 성격은 있으나 인용 없음
+  2점: 추상적 서술 수준 (나쁜 말을 했다 등)
+  1점: 실제 메시지가 매우 불분명하게 언급됨
 
 문제 3 채점 기준 (10점: 1단계 3점 + 2단계 3점 + 3단계 3점 + 형식 1점)
 핵심 맥락: 팀원 입장에서 나-전달법으로 고쳐 말하는 것. 팀원이 실수한 상대에게 화 대신 나-전달법으로 말하는 상황.
@@ -301,6 +302,23 @@ total_count = len(ALL_KEYS)
 st.markdown('<div class="brand-text">♥ 빵쌤과 함께하는 국어수업 ♥</div>', unsafe_allow_html=True)
 st.markdown('<div class="title-text">📝 서논술형 자동 채점</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-text">3. 마음이 자라는 시간 ② 존중하며 말하기 | 총 30점</div>', unsafe_allow_html=True)
+
+# 3문제 모두 채점됐을 때 총점 표시
+_graded_ids = set(st.session_state.get("results_map", {}).keys())
+_all_graded = {"1-1","1-2","1-3","1-4","2-1","2-2","3"}.issubset(_graded_ids)
+if _all_graded:
+    _gt  = sum(r.get("total",0) for r in st.session_state.results_map.values())
+    _gm  = sum(r.get("max_total",0) for r in st.session_state.results_map.values())
+    _pct = int(_gt / _gm * 100) if _gm else 0
+    _lbl = "🏆 우수" if _pct >= 80 else "👍 보통" if _pct >= 50 else "💪 노력 필요"
+    st.markdown(f"""
+    <div style="background:#1A3A5C;color:white;border-radius:12px;padding:14px 24px;
+                text-align:center;margin:8px 0 4px 0;">
+      <span style="font-size:14px;opacity:0.8;">전체 총점</span>&nbsp;&nbsp;
+      <span style="font-size:32px;font-weight:bold;">{_gt} / {_gm}점</span>&nbsp;&nbsp;
+      <span style="font-size:16px;">{_lbl} ({_pct}%)</span>
+    </div>
+    """, unsafe_allow_html=True)
 
 # 완료 카운트 + 초기화 버튼
 col_count, col_reset = st.columns([6, 1])

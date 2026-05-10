@@ -4,12 +4,7 @@ import json
 import re
 import os
 
-# ── 페이지 설정 ────────────────────────────────────────────────────────────
-st.set_page_config(
-    page_title="서논술형 자동 채점",
-    page_icon="📝",
-    layout="wide",
-)
+st.set_page_config(page_title="서논술형 자동 채점", page_icon="📝", layout="wide")
 
 st.markdown("""
 <style>
@@ -51,9 +46,17 @@ st.markdown("""
         border-radius: 10px; padding: 14px 18px; margin: 10px 0;
         line-height: 1.8;
     }
-    .brand-text { font-size: 13px; color: #888; text-align: center; margin-bottom: 2px; }
+    .brand-text { font-size: 15px; color: #e75480; text-align: center; margin-bottom: 2px; font-weight: bold; }
     .title-text { font-size: 28px; font-weight: bold; color: #1A3A5C; text-align: center; margin-bottom: 4px; }
     .sub-text   { font-size: 13px; color: #666; text-align: center; margin-bottom: 16px; }
+    .counter-box {
+        background: white; border-radius: 10px; padding: 10px 16px;
+        border: 1.5px solid #2C5282; margin: 8px 0 12px 0;
+        display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
+    }
+    .counter-item { font-size: 13px; color: #444; }
+    .counter-done { color: #27AE60; font-weight: bold; }
+    .counter-todo { color: #AAAAAA; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -62,6 +65,11 @@ GRADING_CRITERIA = """
 당신은 중학교 1학년 국어 서논술형 평가 채점 전문가입니다.
 아래 채점 기준에 따라 학생 답안을 채점하고, 반드시 JSON 형식으로만 응답하세요.
 응답에 마크다운 기호(**, *, #), 특수 따옴표, 기타 특수기호를 절대 사용하지 마세요.
+
+중요: 피드백과 채점 이유 작성 시 정답을 직접 알려주지 마세요.
+대신 학생이 스스로 다시 생각해볼 수 있도록 힌트와 방향만 제시하세요.
+예를 들어 "홀룡이라는 표현을 다시 살펴보세요. 이 표현이 상대에게 어떤 느낌을 줄까요?" 처럼 유도하세요.
+절대 "정답은 조롱입니다" 같은 직접적인 정답 제시는 하지 마세요.
 
 수업 맥락
 단원: 3. 마음이 자라는 시간 (2) 존중하며 말하기
@@ -122,21 +130,21 @@ GRADING_CRITERIA = """
 오개념: 내용과 감정을 한 문장에 합치면 내용 감정 각 1점씩만 인정
 
 2-2) 메시지 불일치 비교 (8점: 의도 3점 + 실제 메시지 3점 + 차이결과 2점)
-의도(3점): 지켜봐 달라는 바람과 서운함
+의도(3점):
   3점: 바람(지켜봐 달라)과 서운함이 모두 명확
   2점: 둘 중 하나만 명확
   1점: 의도 언급은 있으나 매우 모호
-실제 메시지(3점): 지문 표현 직접 인용 + 비난/협박 성격 언급
+실제 메시지(3점):
   3점: 맨날 딴짓 또는 안 도와줄 거야 중 하나 이상 인용 + 비난 협박 성격 서술
   2점: 지문 인용은 있으나 비난 협박 성격 미언급, 또는 성격은 있으나 인용 없음
   1점: 추상적 서술 수준
-차이결과(2점): 두 메시지가 달라서 진심이 전달되지 않았다는 내용
+차이결과(2점):
   2점: 전달되지 않다, 알아채지 못하다, 공격받다, 상처 등이 드러남
   1점: 차이 언급은 있으나 결과 영향 없음
   0점: 두 메시지 나열만 하고 차이 결과 없음
 
 문제 3 채점 기준 (10점: 1단계 3점 + 2단계 3점 + 3단계 3점 + 형식 1점)
-핵심 맥락: 팀원 입장에서 나-전달법으로 고쳐 말하는 것. 팀원이 실수한 계룡에게 화 대신 나-전달법으로 말하는 상황.
+핵심 맥락: 팀원 입장에서 나-전달법으로 고쳐 말하는 것. 팀원이 실수한 상대에게 화 대신 나-전달법으로 말하는 상황.
 
 1단계 사실(3점): 평가 감정 해석 없이 관찰한 사실만 서술
   3점: 평가 감정 없이 사실만 서술
@@ -160,35 +168,33 @@ GRADING_CRITERIA = """
   0점: 3단계 중 하나라도 빠짐, 순서 역전, 3문장 초과
 
 JSON 응답 형식 (다른 텍스트 절대 금지, 마크다운 기호 절대 사용 금지)
-
 {
   "results": [
     {
       "id": "1-1",
       "scores": {
-        "유형": {"score": 1, "max": 1, "reason": "채점 이유를 평문으로 작성"},
-        "이유": {"score": 1, "max": 1, "reason": "채점 이유를 평문으로 작성"}
+        "유형": {"score": 1, "max": 1, "hint": "틀렸을 경우에만 스스로 다시 생각해볼 수 있는 힌트 1문장. 정답 언급 금지."},
+        "이유": {"score": 1, "max": 1, "hint": "틀렸을 경우에만 스스로 다시 생각해볼 수 있는 힌트 1문장. 정답 언급 금지."}
       },
       "total": 2,
       "max_total": 2,
-      "feedback": "학생에게 전달할 피드백을 평문으로 2~3문장 작성",
+      "feedback": "잘된 점과 부족한 점을 힌트 형식으로 2문장. 정답 직접 언급 금지. 평문으로 작성.",
       "needs_review": false,
       "review_concept": "",
-      "review_point": "",
-      "weak_point": ""
+      "review_point": "복습이 필요한 개념의 핵심 포인트를 힌트로. 정답 언급 금지. 평문.",
+      "weak_point": "내 답안에서 부족했던 부분을 힌트로. 정답 언급 금지. 평문."
     }
   ]
 }
-
 needs_review는 total이 max_total보다 낮으면 true로 설정하세요.
-모든 텍스트 값에 마크다운 기호, 특수 따옴표, 별표, 샾 등을 절대 사용하지 마세요.
+점수가 만점이면 hint는 빈 문자열로 두세요.
+모든 텍스트 값에 마크다운 기호를 절대 사용하지 마세요.
 """
 
 # ── 채점 함수 ──────────────────────────────────────────────────────────────
 def grade_answers(answers: dict) -> dict:
     api_key = st.secrets.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_API_KEY")
     client = anthropic.Anthropic(api_key=api_key)
-
     answer_text = ""
     names = ["거제", "고현", "장평", "중곡"]
     for i, key in enumerate(["q1_1","q1_2","q1_3","q1_4"], 1):
@@ -197,20 +203,17 @@ def grade_answers(answers: dict) -> dict:
     answer_text += f"\n[문제 2-1] 세모의 의도 분석:\n{answers.get('q2_1','').strip() or '(미응답)'}\n"
     answer_text += f"\n[문제 2-2] 메시지 불일치 비교:\n{answers.get('q2_2','').strip() or '(미응답)'}\n"
     answer_text += f"\n[문제 3] 나-전달법 고쳐 말하기:\n{answers.get('q3','').strip() or '(미응답)'}\n"
-
     response = client.messages.create(
         model="claude-sonnet-4-5-20250929",
         max_tokens=4000,
         system=GRADING_CRITERIA,
         messages=[{"role": "user", "content": f"다음 학생 답안을 채점해 주세요.\n\n{answer_text}"}]
     )
-
     raw = response.content[0].text.strip()
     json_match = re.search(r'\{[\s\S]*\}', raw)
     if json_match:
         return json.loads(json_match.group())
     return {"results": []}
-
 
 # ── UI 헬퍼 ───────────────────────────────────────────────────────────────
 def score_class(score, max_score):
@@ -238,80 +241,103 @@ def render_inline_result(result: dict):
     """, unsafe_allow_html=True)
     with st.expander("세부 채점 보기", expanded=(total < mxtot)):
         for item_name, item in result["scores"].items():
-            sc, mx, reason = item["score"], item["max"], item["reason"]
-            c = score_class(sc, mx)
-            e = score_emoji(sc, mx)
+            sc  = item["score"]
+            mx  = item["max"]
+            hint= item.get("hint", "")
+            c   = score_class(sc, mx)
+            e   = score_emoji(sc, mx)
+            hint_html = f'<br><span style="font-size:13px;color:#555;">💡 {hint}</span>' if hint and sc < mx else ""
             st.markdown(f"""
             <div class="score-box {c}" style="margin:4px 0;padding:10px 14px;">
-              {e} <b>{item_name}</b>: {sc}/{mx}점
-              <br><span style="font-size:13px;color:#444;">{reason}</span>
+              {e} <b>{item_name}</b>: {sc}/{mx}점{hint_html}
             </div>
             """, unsafe_allow_html=True)
-        st.markdown(f"""
-        <div style="background:#EBF2FA;border-radius:8px;padding:10px 14px;margin-top:8px;font-size:13px;color:#2C3E50;">
-          💬 {result.get("feedback","")}
-        </div>
-        """, unsafe_allow_html=True)
+        fb = result.get("feedback", "")
+        if fb:
+            st.markdown(f"""
+            <div style="background:#EBF2FA;border-radius:8px;padding:10px 14px;margin-top:8px;font-size:13px;color:#2C3E50;">
+              💬 {fb}
+            </div>
+            """, unsafe_allow_html=True)
 
 def qa_block(q_text, key, placeholder, height=90):
     st.markdown(f'<div class="q-text">{q_text}</div>', unsafe_allow_html=True)
     val = st.text_area(" ", height=height, key=key, placeholder=placeholder, label_visibility="collapsed")
     return val
 
-
 # ── 세션 상태 초기화 ──────────────────────────────────────────────────────
-for _k in ["graded","results_map","grand_total","grand_max"]:
+for _k, _v in [("graded", False), ("results_map", {}), ("grand_total", 0), ("grand_max", 0)]:
     if _k not in st.session_state:
-        st.session_state[_k] = False if _k == "graded" else ({} if _k == "results_map" else 0)
+        st.session_state[_k] = _v
 
+# ── 완료 카운트 계산 ──────────────────────────────────────────────────────
+ALL_KEYS = ["q1_1","q1_2","q1_3","q1_4","q2_1","q2_2","q3"]
+Q_LABELS = {
+    "q1_1": "1-1)", "q1_2": "1-2)", "q1_3": "1-3)", "q1_4": "1-4)",
+    "q2_1": "2-1)", "q2_2": "2-2)", "q3": "3)"
+}
+done_keys   = [k for k in ALL_KEYS if st.session_state.get(k, "").strip()]
+done_count  = len(done_keys)
+total_count = len(ALL_KEYS)
 
 # ── 헤더 ──────────────────────────────────────────────────────────────────
-st.markdown('<div class="brand-text">빵쌤과 함께하는 국어수업</div>', unsafe_allow_html=True)
+st.markdown('<div class="brand-text">♥ 빵쌤과 함께하는 국어수업 ♥</div>', unsafe_allow_html=True)
 st.markdown('<div class="title-text">📝 서논술형 자동 채점</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-text">3. 마음이 자라는 시간 ② 존중하며 말하기 | 총 30점</div>', unsafe_allow_html=True)
 
-# 안내 + 초기화 버튼
-col_guide, col_reset = st.columns([6, 1])
-with col_guide:
-    st.markdown(
-        '<span style="font-size:12px;color:#777;">모든 문제를 제출하면 복습할 내용 탭에서 틀린 개념을 확인할 수 있어요. '
-        '답안을 초기화하고 처음부터 다시 풀고 싶다면 다음의 버튼을 누르세요.</span>',
-        unsafe_allow_html=True
-    )
+# 완료 카운트 + 초기화 버튼
+col_count, col_reset = st.columns([6, 1])
+with col_count:
+    items_html = ""
+    for k in ALL_KEYS:
+        filled = bool(st.session_state.get(k, "").strip())
+        cls    = "counter-done" if filled else "counter-todo"
+        symbol = "✔" if filled else "○"
+        items_html += f'<span class="counter-item {cls}">{symbol} {Q_LABELS[k]}</span> &nbsp;'
+    st.markdown(f"""
+    <div class="counter-box">
+      <span style="font-size:13px;font-weight:bold;color:#2C5282;">작성 완료 {done_count}/{total_count}</span>
+      &nbsp;|&nbsp; {items_html}
+    </div>
+    """, unsafe_allow_html=True)
 with col_reset:
     if st.button("🔄 처음부터 다시 풀기", type="secondary"):
-        for k in ["q1_1","q1_2","q1_3","q1_4","q2_1","q2_2","q3"]:
+        for k in ALL_KEYS:
             st.session_state.pop(k, None)
-        st.session_state.graded = False
+        st.session_state.graded      = False
         st.session_state.results_map = {}
         st.session_state.grand_total = 0
         st.session_state.grand_max   = 0
         st.rerun()
 
+st.markdown(
+    '<div style="font-size:11px;color:#aaa;text-align:right;margin-top:-8px;">'
+    '모든 문제를 작성한 뒤 각 탭에서 채점하기 버튼을 눌러주세요. '
+    '답안을 초기화하려면 오른쪽 버튼을 누르세요.</div>',
+    unsafe_allow_html=True
+)
 st.markdown("---")
 
 # ── 탭 ────────────────────────────────────────────────────────────────────
-tab1, tab2, tab3 = st.tabs(["📘 문제 1", "📗 문제 2 · 3", "🔁 복습할 내용"])
+tab1, tab2, tab3, tab4 = st.tabs(["📘 문제 1", "📗 문제 2", "📙 문제 3", "🔁 복습할 내용"])
 
 # ════════════════════════════════════
 # 탭 1 — 문제 1
 # ════════════════════════════════════
 with tab1:
     st.markdown('<div class="section-header">문제 1 &nbsp; 기본형 &nbsp; (8점, 각 2점)</div>', unsafe_allow_html=True)
-
     st.markdown("""
     <div class="data-box">
       📱 <b>단톡방 「우리 반 다 모여」</b><br><br>
-      담임쌤: 내일 체험학습 집합 장소가 바뀌었어요. 공지 꼭 확인하세요 😊<br>
-      계&nbsp;&nbsp;룡: 와, 어디로요?<br>
-      거&nbsp;&nbsp;제: ㅋㅋ <u>계룡이 너 어차피 체험학습도 맨날 혼자인 홀룡이잖아 ㅎㅎ</u>. 뭐가 궁금해?<br>
-      고&nbsp;&nbsp;현: 맞음. <u>짝도 없으면서</u> 선생님이 억지로 붙여주는 거 아니야?<br>
-      장&nbsp;&nbsp;평: 야, 계룡아. <u>버스 우리 자리 넘보지 마. 오지 말라고 가만 안 둔다.</u><br>
-      중&nbsp;&nbsp;곡: 계룡아, 그냥 그날 결석해라. <u>어차피 아무도 안 반긴다.</u><br>
-      계&nbsp;&nbsp;룡: ...
+      <b>담임쌤</b>: 내일 체험학습 집합 장소가 바뀌었어요. 공지 꼭 확인하세요 😊<br>
+      <b>계&nbsp;&nbsp;룡</b>: 와, 어디로요?<br>
+      <b>거&nbsp;&nbsp;제</b>: ㅋㅋ <u>계룡이 너 어차피 체험학습도 맨날 혼자인 홀룡이잖아 ㅎㅎ</u>. 뭐가 궁금해?<br>
+      <b>고&nbsp;&nbsp;현</b>: 맞음. <u>짝도 없으면서</u> 선생님이 억지로 붙여주는 거 아니야?<br>
+      <b>장&nbsp;&nbsp;평</b>: 야, 계룡아. <u>버스 우리 자리 넘보지 마. 오지 말라고 가만 안 둔다.</u><br>
+      <b>중&nbsp;&nbsp;곡</b>: 계룡아, 그냥 그날 결석해라. <u>어차피 아무도 안 반긴다.</u><br>
+      <b>계&nbsp;&nbsp;룡</b>: ...
     </div>
     """, unsafe_allow_html=True)
-
     st.markdown("""
     <div class="cond-box">
       ⚠️ <b>조건</b><br>
@@ -322,7 +348,6 @@ with tab1:
     """, unsafe_allow_html=True)
 
     rm = st.session_state.results_map
-
     qa_block("1) 거제의 발언에서 나타나는 언어폭력의 유형과 그 이유를 두 문장으로 서술하시오.",
              "q1_1", "거제의 발언은 ~에 해당한다. 왜냐하면 ~이기 때문이다.")
     if st.session_state.graded and "1-1" in rm:
@@ -345,40 +370,39 @@ with tab1:
 
     st.markdown("")
     if st.button("문제 1 채점하기", key="grade_q1", type="primary", use_container_width=True):
-        answers = {k: st.session_state.get(k,"") for k in ["q1_1","q1_2","q1_3","q1_4","q2_1","q2_2","q3"]}
+        answers = {k: st.session_state.get(k,"") for k in ALL_KEYS}
         with st.spinner("채점 중입니다..."):
             try:
                 data = grade_answers(answers)
                 for r in data.get("results", []):
                     st.session_state.results_map[r["id"]] = r
-                st.session_state.graded = True
+                st.session_state.graded      = True
                 st.session_state.grand_total = sum(r.get("total",0) for r in data.get("results",[]))
                 st.session_state.grand_max   = sum(r.get("max_total",0) for r in data.get("results",[]))
                 st.rerun()
             except Exception as e:
                 st.error(f"채점 중 오류가 발생했습니다: {e}")
 
-
 # ════════════════════════════════════
-# 탭 2 — 문제 2 · 3
+# 탭 2 — 문제 2
 # ════════════════════════════════════
 with tab2:
-    rm = st.session_state.results_map
-
-    # 문제 2
     st.markdown('<div class="section-header">문제 2 &nbsp; 심화형 &nbsp; (12점)</div>', unsafe_allow_html=True)
     st.markdown("""
     <div class="data-box">
       🏫 <b>교실 대화</b><br><br>
       발표를 마치고 자리에 돌아온 세모가 짝꿍 네모에게 낮은 목소리로 말했다.<br><br>
-      세모: "야, 너 왜 내 발표할 때 맨날 딴짓이야? 자꾸 그러면 나도 다음부터 네 거 안 도와줄 거야."<br><br>
+      <b>세모</b>: "야, 너 왜 내 발표할 때 맨날 딴짓이야? 자꾸 그러면 나도 다음부터 네 거 안 도와줄 거야."<br><br>
       네모는 아무 말 없이 고개를 돌렸다.<br><br>
       참고: 세모는 오늘 발표를 매우 긴장하며 준비했고, 네모가 지켜봐 줬으면 하는 바람이 있었다.
     </div>
     """, unsafe_allow_html=True)
 
+    rm = st.session_state.results_map
+
     st.markdown("""
     <div class="cond-box">
+      ⚠️ <b>조건</b><br>
       ✅ 문장 형식: "세모가 전달하려 했던 내용은 ~이다. 세모가 표현하고 싶었던 감정은 ~이다."
     </div>
     """, unsafe_allow_html=True)
@@ -389,6 +413,7 @@ with tab2:
 
     st.markdown("""
     <div class="cond-box">
+      ⚠️ <b>조건</b><br>
       ✅ 3문장 이내로 서술하시오.<br>
       ✅ 문장 형식: "세모가 의도한 메시지는 ~이었다. 그러나 실제로 전달된 메시지는 ~이었다."
     </div>
@@ -398,9 +423,25 @@ with tab2:
     if st.session_state.graded and "2-2" in rm:
         render_inline_result(rm["2-2"])
 
-    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("")
+    if st.button("문제 2 채점하기", key="grade_q2", type="primary", use_container_width=True):
+        answers = {k: st.session_state.get(k,"") for k in ALL_KEYS}
+        with st.spinner("채점 중입니다..."):
+            try:
+                data = grade_answers(answers)
+                for r in data.get("results", []):
+                    st.session_state.results_map[r["id"]] = r
+                st.session_state.graded      = True
+                st.session_state.grand_total = sum(r.get("total",0) for r in data.get("results",[]))
+                st.session_state.grand_max   = sum(r.get("max_total",0) for r in data.get("results",[]))
+                st.rerun()
+            except Exception as e:
+                st.error(f"채점 중 오류가 발생했습니다: {e}")
 
-    # 문제 3
+# ════════════════════════════════════
+# 탭 3 — 문제 3
+# ════════════════════════════════════
+with tab3:
     st.markdown('<div class="section-header">문제 3 &nbsp; 심화형 &nbsp; (10점)</div>', unsafe_allow_html=True)
     st.markdown("""
     <div class="data-box">
@@ -411,25 +452,28 @@ with tab2:
     """, unsafe_allow_html=True)
     st.markdown("""
     <div class="cond-box">
+      ⚠️ <b>조건</b><br>
       ✅ ㉠을 말한 팀원 입장에서 나-전달법으로 고쳐 말하는 상황으로 서술하시오.<br>
       ✅ 배려하며 말하기 3단계(사실 → 감정 → 원하는 것)가 모두 드러나야 합니다.<br>
       ✅ 3문장 이내로 서술하시오.
     </div>
     """, unsafe_allow_html=True)
+
+    rm = st.session_state.results_map
     qa_block("1) 다음 상황에서 ㉠을 배려하며 말하기 방법(나-전달법)에 맞게 고쳐 말한다면 어떻게 말할지 서술하시오.",
              "q3", "나는 네가 ~ 것을 보았다. 그걸 보면서 나는 ~하고 ~했다. 앞으로 ~ 해 줬으면 좋겠다.", height=120)
     if st.session_state.graded and "3" in rm:
         render_inline_result(rm["3"])
 
     st.markdown("")
-    if st.button("문제 2·3 채점하기", key="grade_q23", type="primary", use_container_width=True):
-        answers = {k: st.session_state.get(k,"") for k in ["q1_1","q1_2","q1_3","q1_4","q2_1","q2_2","q3"]}
+    if st.button("문제 3 채점하기", key="grade_q3", type="primary", use_container_width=True):
+        answers = {k: st.session_state.get(k,"") for k in ALL_KEYS}
         with st.spinner("채점 중입니다..."):
             try:
                 data = grade_answers(answers)
                 for r in data.get("results", []):
                     st.session_state.results_map[r["id"]] = r
-                st.session_state.graded = True
+                st.session_state.graded      = True
                 st.session_state.grand_total = sum(r.get("total",0) for r in data.get("results",[]))
                 st.session_state.grand_max   = sum(r.get("max_total",0) for r in data.get("results",[]))
                 st.rerun()
@@ -449,13 +493,11 @@ with tab2:
         </div>
         """, unsafe_allow_html=True)
 
-
 # ════════════════════════════════════
-# 탭 3 — 복습할 내용
+# 탭 4 — 복습할 내용
 # ════════════════════════════════════
-with tab3:
+with tab4:
     st.markdown("### 🔁 복습할 내용")
-
     if not st.session_state.graded or not st.session_state.results_map:
         st.info("채점을 완료하면 여기에 복습이 필요한 내용이 표시돼요.")
     else:
@@ -469,25 +511,22 @@ with tab3:
             "3":   "문제 3  나-전달법",
         }
         review_items = [r for r in st.session_state.results_map.values() if r.get("needs_review", False)]
-
         if not review_items:
             st.success("모든 문항의 조건을 충족했어요! 정말 잘했어요 🎉")
         else:
-            st.markdown(f"조건을 충족하지 못한 문항이 {len(review_items)}개 있어요. 아래 내용을 다시 확인해 보세요.")
+            st.markdown(f"조건을 충족하지 못한 문항이 {len(review_items)}개 있어요. 아래 힌트를 보고 다시 한 번 생각해 보세요!")
             st.markdown("")
             for r in review_items:
-                label       = label_map.get(r["id"], r["id"])
-                concept     = r.get("review_concept", "")
-                review_point= r.get("review_point", "")
-                weak_point  = r.get("weak_point", "")
-                concept_line     = f"<br>복습 개념: {concept}" if concept else ""
-                review_line      = f"<br>핵심 복습 포인트: {review_point}" if review_point else ""
-                weak_line        = f"<br>내 답안의 부족한 부분: {weak_point}" if weak_point else ""
+                label        = label_map.get(r["id"], r["id"])
+                concept      = r.get("review_concept", "")
+                review_point = r.get("review_point", "")
+                weak_point   = r.get("weak_point", "")
+                concept_line = f"<br>복습 개념: {concept}" if concept else ""
+                review_line  = f"<br>💡 핵심 힌트: {review_point}" if review_point else ""
+                weak_line    = f"<br>🔍 내 답안 돌아보기: {weak_point}" if weak_point else ""
                 st.markdown(f"""
                 <div class="review-box">
                   <b>📌 {label}</b>
                   {concept_line}{review_line}{weak_line}
                 </div>
                 """, unsafe_allow_html=True)
-
-

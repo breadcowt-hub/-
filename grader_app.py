@@ -210,7 +210,7 @@ def _call_api(answer_text: str) -> dict:
             time.sleep(attempt * 3)
             response = client.messages.create(
                 model="claude-sonnet-4-5-20250929",
-                max_tokens=1500,
+                max_tokens=3000,
                 system=GRADING_CRITERIA,
                 messages=[{"role": "user", "content": f"다음 학생 답안을 채점해 주세요.\n\n{answer_text}"}]
             )

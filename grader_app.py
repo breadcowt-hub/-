@@ -202,18 +202,28 @@ needs_review는 total이 max_total보다 낮으면 true로 설정하세요.
 
 # ── 채점 함수 (문제별 분리) ────────────────────────────────────────────────
 def _call_api(answer_text: str) -> dict:
+    import time
     api_key = st.secrets.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_API_KEY")
     client  = anthropic.Anthropic(api_key=api_key)
-    response = client.messages.create(
-        model="claude-sonnet-4-5-20250929",
-        max_tokens=4000,
-        system=GRADING_CRITERIA,
-        messages=[{"role": "user", "content": f"다음 학생 답안을 채점해 주세요.\n\n{answer_text}"}]
-    )
-    raw = response.content[0].text.strip()
-    json_match = re.search(r'\{[\s\S]*\}', raw)
-    if json_match:
-        return json.loads(json_match.group())
+    for attempt in range(4):
+        try:
+            time.sleep(attempt * 3)
+            response = client.messages.create(
+                model="claude-sonnet-4-5-20250929",
+                max_tokens=1500,
+                system=GRADING_CRITERIA,
+                messages=[{"role": "user", "content": f"다음 학생 답안을 채점해 주세요.\n\n{answer_text}"}]
+            )
+            raw = response.content[0].text.strip()
+            json_match = re.search(r'\{[\s\S]*\}', raw)
+            if json_match:
+                return json.loads(json_match.group())
+            return {"results": []}
+        except Exception as e:
+            if "429" in str(e) and attempt < 3:
+                st.warning(f"요청이 많아 잠시 대기 중입니다... ({attempt+1}/3회 재시도)")
+                continue
+            raise
     return {"results": []}
 
 def grade_q1(answers: dict) -> dict:
